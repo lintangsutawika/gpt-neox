@@ -39,6 +39,7 @@ def main():
         neox_args,
         eval_tasks=neox_args.eval_tasks,
         bootstrap_iters=10000,
+        num_fewshot=4 # added this for 4-shot
     )
     if neox_args.rank == 0:
         init_wandb(neox_args=neox_args)

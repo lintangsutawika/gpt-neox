@@ -28,6 +28,7 @@ best_download.download_file = _download_file
 
 import os
 import sys
+import importlib
 import dataclasses
 from functools import partial
 
@@ -392,25 +393,44 @@ class EvalHarnessAdapter(GPT2LM):
         import fnmatch
 
         def pattern_match(patterns, source_list):
-            task_names = set()
+            library_tasks = set()
+            local_tasks = set()
             for pattern in patterns:
+                if os.path.isfile(pattern):
+                    local_tasks.add(pattern)
                 for matching in fnmatch.filter(source_list, pattern):
-                    task_names.add(matching)
-            return list(task_names)
+                    library_tasks.add(matching)
 
-        eval_tasks = pattern_match(eval_tasks, tasks.ALL_TASKS)
-        print(f"Found tasks: {eval_tasks}")
+            return list(library_tasks), list(local_tasks)
+
+        library_tasks, local_tasks = pattern_match(eval_tasks, tasks.ALL_TASKS)
+        
+        def get_local_task_dict(local_tasks):
+            local_task_dict = {}
+            for local_task in local_tasks:
+                directory, filename = os.path.split(local_task)
+                sys.path.append(os.path.dirname(directory))
+                d = importlib.import_module(os.path.splitext(filename)[0])
+                local_task_dict = {**local_task_dict, **{task: taskobj() for task, taskobj in d.get_task_dict().items()}}
+            
+            return local_task_dict
 
         # **HACK INCOMING**:
         # first get task dict on local main rank
         # the tasks are downloaded *as they are initialized*, and the downloads don't like multithreading.
         # so we download them once on the local main rank, wait, and then initialize them on all other ranks, which *should* load from the cache.
         if self.is_local_main:
-            task_dict = tasks.get_task_dict(eval_tasks)
+            library_task_dict = tasks.get_task_dict(library_tasks)
+            local_task_dict = get_local_task_dict(local_tasks) # same hack
+
         # torch barrier
         if torch.distributed.is_initialized():
             torch.distributed.barrier()
-        task_dict = tasks.get_task_dict(eval_tasks)
+    
+        library_task_dict = tasks.get_task_dict(library_tasks)
+        local_task_dict = get_local_task_dict(local_tasks)
+
+        task_dict = {**library_task_dict, **local_task_dict}
 
         lm = self
         if use_cache:
@@ -420,7 +440,7 @@ class EvalHarnessAdapter(GPT2LM):
 
         results = evaluator.evaluate(
             lm=lm,
-            task_dict=tasks.get_task_dict(eval_tasks),
+            task_dict=task_dict,
             description_dict=description_dict,
             num_fewshot=num_fewshot,
             limit=limit,
