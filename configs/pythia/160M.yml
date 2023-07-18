@@ -1,4 +1,12 @@
 {
+  # "vocab-file": /mnt/ssd-1/data/20B_tokenizer.json,
+  "vocab-file": "/mnt/ssd-2/pile/20B_tokenizer.json",
+  # "data_path": "/mnt/ssd-1/data/pile_20B_tokenizer/pile_20B_tokenizer_text_document",
+  "data_path": "/mnt/ssd-2/pile_deduped/pile_20B_tokenizer_text_document",
+  "load": "/mnt/hdd-0/alyssaloo/pythia-v2-160M",
+  # "save": "/mnt/ssd-2/lintangsutawika/pythia-v2-160M/",
+
+  # parallelism settings
   "pipe_parallel_size": 1,
   "model_parallel_size": 1,
 
@@ -32,7 +40,7 @@
   "min_lr": 0.00006,
 
   "zero_optimization": {
-    "stage": 1,
+    "stage": 0, #changed from 1
     "allgather_partitions": true,
     "allgather_bucket_size": 500000000,
     "overlap_comm": true,
@@ -67,15 +75,16 @@
     "min_loss_scale": 1
   },
 
-  "train_iters": 143000,
-  "lr_decay_iters": 143000,
-  "distributed_backend": "nccl",
-  "lr_decay_style": "cosine",
+  "train-iters": 143000,
+  "lr-decay-iters": 143000,
+  "distributed-backend": "nccl",
+  "lr-decay-style": "cosine",
   "warmup": 0.01,
-  "checkpoint_factor": 1000,
-  "extra_save_iters": [0,1,2,4,8,16,32,64,128,256,512],
-  "eval_interval": 143000,
-  "eval_iters": 10,
+  "checkpoint-factor": 1000,
+  # "extra-save-iters": [0,1,2,4,8,16,32,64,128,256,512],
+  "eval-interval": 1, # changed from 40000
+  "eval-iters": 1, # changed from 10
+  "exit_interval": 35010,
 
   "log_interval": 10,
   "steps_per_print": 10,
