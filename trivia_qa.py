@@ -142,3 +142,6 @@ class TriviaQA(Task):
             "acc": True,
             "id": True
             }
+
+def get_task_dict():
+    return {"TriviaQA": TriviaQA}
